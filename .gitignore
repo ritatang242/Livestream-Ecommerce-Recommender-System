@@ -2,8 +2,12 @@
 /fig/*
 /facilities_program/*
 /.ipynb_checkpoints/*
-/iframe_figures/
-/customized/.ipynb_checkpoints/
-/customized/__pycache__/
-customized/model/__pycache__/
-customized/model/.ipynb_checkpoints/autoencoder-checkpoint.py customized/model/.ipynb_checkpoints/bayesianNN-checkpoint.py customized/model/.ipynb_checkpoints/neural_network-checkpoint.py customized/model/.ipynb_checkpoints/rnns-checkpoint.py customized/model/.ipynb_checkpoints/temporal_context_models-checkpoint.py customized/model/.ipynb_checkpoints/vae-checkpoint.py
+/iframe_figures/*
+/customized/__pycache__/*
+/customized/.ipynb_checkpoints/*
+customized/model/__pycache__/*
+customized/model/.ipynb_checkpoints/*
+striatum/__pycache__/*
+striatum/.ipynb_checkpoints/*
+neural_exploration/__pycache__/*
+neural_exploration/.ipynb_checkpoints/*
