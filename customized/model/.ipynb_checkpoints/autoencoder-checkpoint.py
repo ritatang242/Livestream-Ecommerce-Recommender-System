@@ -114,6 +114,13 @@ class AutoEncoder(nn.Module):
                         print("[Testing] Step [{}/{}], Reconstructed Loss: {:.4f}".format(i+1, len(ae_ts_loader), loss.item()))
                     loss_record["Validation (z="+str(z_dim)+")"].append(loss.item())
 
+#             plt.plot(range(len(loss_record[z_dim])), loss_record[z_dim], ls='-', label=z_dim)
+#             plt.ylabel('Training Loss')
+#             plt.xlabel('Number of Epoches')
+#             plt.legend(labels=["z=20", "z=30"], bbox_to_anchor=(0.98, 0.98), loc=1, borderaxespad=0.)
+#             plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
+#         plt.savefig(fname=current_path+'/fig/loss_ae_'+str(model_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
+#         plt.show()
         return loss_record
 
 

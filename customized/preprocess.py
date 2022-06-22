@@ -398,8 +398,71 @@ def trim_cust_for_context(full_context, cust_id, trim_cust_list):
     full_cxt = df.to_numpy()
     full_cxt_id = list(df.index)
     return full_cxt, full_cxt_id, full_cxt_dict
+
+def trim_cust_for_context_sort(full_context, cust_id, trim_cust_list):
+    df = pd.DataFrame(np.array(full_context), index=cust_id)
+    df = df[df.index.isin(trim_cust_list)]
+    df2 = df.reindex(trim_cust_list)
+    full_cxt_dict = dict(zip(df2.index, df2.values))
+    full_cxt = df2.to_numpy()
+    full_cxt_id = list(df2.index)
+    return full_cxt, full_cxt_id, full_cxt_dict
+
+def concate_streamer_product_features(txn_data, streamer, reward_prod_id):
+    prod_feature = id2embed(reward_prod_id)
+    print(f"product feature: {prod_feature.shape}")
+    prod_belongs_streamer = txn_data[txn_data.商品id.isin(reward_prod_id)].drop_duplicates(['user_id','商品id'])[['user_id','商品id']]
+    prod_belongs_streamer = prod_belongs_streamer.set_index('商品id').reindex(reward_prod_id).dropna() # 200
+    streamer_feature = []
+    for u in list(prod_belongs_streamer.user_id):
+        streamer_feature.append(streamer[streamer.index==u].to_numpy().reshape(23))
+    streamer_feature = np.array(streamer_feature)
+    print(f"streamer feature: {streamer_feature.shape}")
+    streamer_product = np.concatenate((streamer_feature, prod_feature), axis=1)
+    print(f"small streamer-product: {streamer_product.shape}")
+    return streamer_product
+
+
 #### for product recommendation models ####
 
+#### for measurements ####
 
+def recommendation_results_df(highest_idxs, reward_cust_id, reward_prod_id):
+    rec_id = []
+    for t in range(100):
+        rec_id.append(str(reward_prod_id[highest_idxs[t]]))
+    rec_results = pd.DataFrame({'asid': reward_cust_id, 'rec_id': rec_id})
+    return rec_results
+
+def coverage_list(repeat_reward, rec_results):
+    rec_record = repeat_reward.merge(rec_results, how='left', left_on=['asid','商品id'], right_on=['asid','rec_id']).fillna(0)
+    cnt = 0
+    coverage = []
+    for i in range(rec_record.shape[0]): # 因為是left join可能超過100次
+        if (rec_record.reward[i] == 1) & (rec_record.rec_id[i]!=0): # 確實喜歡且有推薦到
+            if cnt < 50:
+                cnt += 1
+            else:
+                cnt += 0
+            coverage.append( cnt / 50 )
+        elif rec_record.rec_id[i]!=0: # 控制在100輪內
+            coverage.append( cnt / 50 )
+    return coverage
+
+def idx_list_at_topK(scores_idx, cust_num=1000, prod_num=200, k=10):
+    idx_for_rewards_df = []
+    for i in range(cust_num):
+        if i == 0:
+            idx = scores_idx[i][:k] # 第一個人的topK
+            idx_for_rewards_df.append(idx)
+        else:
+            start_idx = prod_num * i # 每人有200個商品
+            idx = [start_idx+element for element in scores_idx[i][:k]] # 第i個人的topK
+            idx_for_rewards_df.append(idx)
+    return idx_for_rewards_df
+
+
+
+#### for measurements ####
 
 

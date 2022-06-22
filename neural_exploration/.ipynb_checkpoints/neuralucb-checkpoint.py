@@ -114,8 +114,9 @@ class NeuralUCB(UCB):
         """Train neural approximator.
         """
         iterations_so_far = range(np.max([0, self.iteration-self.training_window]), self.iteration+1)
+        print("iterations_so_far", iterations_so_far)
         actions_so_far = self.actions[np.max([0, self.iteration-self.training_window]):self.iteration+1]
-
+        print("actions", self.actions)
         x_train = torch.FloatTensor(self.bandit.features[iterations_so_far, actions_so_far]).to(self.device)
         y_train = torch.FloatTensor(self.bandit.rewards[iterations_so_far, actions_so_far]).squeeze().to(self.device)
 

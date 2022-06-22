@@ -7,7 +7,6 @@ from striatum.storage import action
 from striatum.bandit import ucb1
 from striatum.bandit import linucb
 from striatum.bandit import exp3
-from neural_exploration.NeuralUCB import neuralUCB
 
 def regret_calculation(seq_error):
     t = len(seq_error)
@@ -37,6 +36,7 @@ def policy_evaluation(policy, bandit, num, user_features, reward_list, actions, 
     times = num # 2602
     seq_error = np.zeros(shape=(times, 1))
     actions_id = [actions[i].id for i in range(len(actions))] 
+    predict_id = []
     
     if bandit in ['LinUCB','UCB1', 'Exp3']:
         correct=0
@@ -44,7 +44,6 @@ def policy_evaluation(policy, bandit, num, user_features, reward_list, actions, 
         cntLike = 0
         cntHate = 0
         cntdict = {"delay":[],"like":[],'hate':[]}
-        predict_id = []
         for t in range(times): # 2602
 
             feature = np.array(user_features.iloc[t]) # 2602*811  
@@ -54,15 +53,21 @@ def policy_evaluation(policy, bandit, num, user_features, reward_list, actions, 
 
             if bandit == 'UCB1':
                 history_id, action, score, estimated_reward, uncertainty, total_action_reward, action_times = policy.get_action(full_context, len(actions)) # [2604, 1024], 1024                
-                score = dict(sorted(score.items(), key=lambda x: x[1], reverse=True)[:3])
-                predict_id.append(list(score.keys())[0])
+                score = dict(sorted(score.items(), key=lambda x: x[1], reverse=True))
+                score_keys = [str(k) for k in score.keys() ]
+                predict_id.append(score_keys)
                 
             if bandit == 'LinUCB':
                 history_id, action, estimated_reward, uncertainty, score = policy.get_action(full_context, len(actions)) # [2604, 1024], 1024
-                predict_id.append(list(score.keys())[0])
+                score = dict(sorted(score.items(), key=lambda x: x[1], reverse=True))
+                score_keys = [str(k) for k in score.keys() ]
+                predict_id.append(score_keys)
                 
             if bandit == 'Exp3':
-                history_id, action = policy.get_action(full_context, len(actions))
+                history_id, action, prob = policy.get_action(full_context, len(actions))
+                prob = dict(sorted(prob.items(), key=lambda x: x[1], reverse=True))
+                score_keys = [str(k) for k in prob.keys() ]
+                predict_id.append(score_keys)
             
             watched_list =np.array(reward_list.iloc[t]) 
             rec_id.append( action[0].action.id)
@@ -105,8 +110,6 @@ def policy_evaluation(policy, bandit, num, user_features, reward_list, actions, 
 #             print(f'cntHate: {cntHate}')
 
         print("Correct",correct)
-        pd.set_option("display.max_rows", None)
-        print(pd.Series(predict_id).value_counts())
 
     elif bandit == 'random':
         cntDelayLike = 0
@@ -117,7 +120,7 @@ def policy_evaluation(policy, bandit, num, user_features, reward_list, actions, 
         for t in range(times):
             action = actions_id[np.random.randint(0, len(actions))] # 0~1024隨機抽index
             watched_list =np.array(reward_list.iloc[t])
-            rec_id.append( action)
+            rec_id.append(action)
             if watched_list[actions_id.index(action)]==0:
                 cntHate += 1
                 cntdict['delay'].append(cntDelayLike)
@@ -156,4 +159,4 @@ def policy_evaluation(policy, bandit, num, user_features, reward_list, actions, 
 
         print("Correct",correct) 
         
-    return seq_error, true_rec_id 
+    return seq_error, true_rec_id, predict_id

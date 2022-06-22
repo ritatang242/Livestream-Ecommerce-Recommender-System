@@ -133,7 +133,7 @@ class Exp3(BaseBandit):
                 ))
 
         history_id = self._history_storage.add_history(context, recommendations)
-        return history_id, recommendations
+        return history_id, recommendations, probs
 
     def reward(self, history_id, rewards):
         """Reward the previous action with reward.

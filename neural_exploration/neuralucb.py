@@ -115,7 +115,6 @@ class NeuralUCB(UCB):
         """
         iterations_so_far = range(np.max([0, self.iteration-self.training_window]), self.iteration+1)
         actions_so_far = self.actions[np.max([0, self.iteration-self.training_window]):self.iteration+1]
-
         x_train = torch.FloatTensor(self.bandit.features[iterations_so_far, actions_so_far]).to(self.device)
         y_train = torch.FloatTensor(self.bandit.rewards[iterations_so_far, actions_so_far]).squeeze().to(self.device)
 

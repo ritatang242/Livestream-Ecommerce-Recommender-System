@@ -17,11 +17,11 @@ class ContextualBandit():
         self._seed(seed)
 
         # number of rounds
-        self.T = T
+        self.T = T # 2602
         # number of arms
-        self.n_arms = n_arms
+        self.n_arms = n_arms # 1023
         # number of features for each arm
-        self.n_features = n_features
+        self.n_features = n_features # 20
         # average reward function
         # h : R^d -> R
         self.h = h
@@ -51,7 +51,7 @@ class ContextualBandit():
 #         x /= np.repeat(np.linalg.norm(x, axis=-1, ord=2), self.n_features).reshape(self.T, self.n_arms, self.n_features)
 #         self.features = x
         x = [[random.randint(0, 1) for _ in range(self.n_features)] for _ in range(self.T)]
-        self.features = np.array(x)
+        self.features = np.array(x) # 2602, 20
 
     def reset_rewards(self):
         """Generate rewards for each arm and each round,
@@ -60,9 +60,9 @@ class ContextualBandit():
         self.rewards = np.array(
             [
                 self.h(self.features[t, k]) + self.noise_std*np.random.randn()
-                for t, k in itertools.product(range(self.T), range(self.n_arms))
+                for t, k in itertools.product(range(self.T), range(self.n_features)) # n_arms
             ]
-        ).reshape(self.T, self.n_arms)
+        ).reshape(self.T, self.n_features) # 2602, 1023
 
         # to be used only to compute regret, NOT by the algorithm itself
         self.best_rewards_oracle = np.max(self.rewards, axis=1)

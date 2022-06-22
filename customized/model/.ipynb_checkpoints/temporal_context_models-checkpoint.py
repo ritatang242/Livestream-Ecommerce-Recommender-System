@@ -104,31 +104,30 @@ class CustomerStreamer():
             test_trues = []
             n_total_steps = len(test_loader)
             with torch.no_grad():
-                for epoch in range(num_epochs):
-                    n_correct = 0
-                    n_samples = 0
-                    for i, (inputs, labels) in enumerate(test_loader):
-                        inputs = inputs.reshape(-1, sequence_length, input_size).to(device)
-                        labels = labels.to(device)
-                        outputs, hn = cs_model(inputs) # softmax的outputs會吐出num_clasess個數的機率
-                        loss = loss_funtion(outputs, labels)
-                        if (i+1) % n_total_steps == 0:
-                            print (f'Step [{i+1}/{n_total_steps}], Loss: {loss.item():.4f}')        
-                        cs_loss_record[str(t)+" Sequences Validation"].append(loss.item())
-                        # max returns (value ,index)
-                        _, predicted = torch.max(outputs.data, 1)
-                        n_samples += labels.size(0)
-                        n_correct += (predicted == labels).sum().item()
+                n_correct = 0
+                n_samples = 0
+                for i, (inputs, labels) in enumerate(test_loader):
+                    inputs = inputs.reshape(-1, sequence_length, input_size).to(device)
+                    labels = labels.to(device)
+                    outputs, hn = cs_model(inputs) # softmax的outputs會吐出num_clasess個數的機率
+                    loss = loss_funtion(outputs, labels)
+                    if (i+1) % n_total_steps == 0:
+                        print (f'Step [{i+1}/{n_total_steps}], Loss: {loss.item():.4f}')        
+                    cs_loss_record[str(t)+" Sequences Validation"].append(loss.item())
+                    # max returns (value ,index)
+                    _, predicted = torch.max(outputs.data, 1)
+                    n_samples += labels.size(0)
+                    n_correct += (predicted == labels).sum().item()
 
-                        test_preds.extend(predicted.detach().cpu().numpy())
-                        test_trues.extend(labels.detach().cpu().numpy())
+                    test_preds.extend(predicted.detach().cpu().numpy())
+                    test_trues.extend(labels.detach().cpu().numpy())
 
-                    acc = 100.0 * n_correct / n_samples
-                    print(classification_report(test_trues, test_preds))
-                    print(f'Testing Accuracy: {acc:.4f} %') 
-                    test_trues_bin = metrics.label_binarize(test_trues, classes=[i for i in range(num_classes)])
-                    test_preds_bin = metrics.label_binarize(test_preds, classes=[i for i in range(num_classes)])
-                    metrics.get_roc_auc(test_trues_bin, test_preds_bin, num_classes, t)
+                acc = 100.0 * n_correct / n_samples
+                print(classification_report(test_trues, test_preds))
+                print(f'Testing Accuracy: {acc:.4f} %') 
+                test_trues_bin = metrics.label_binarize(test_trues, classes=[i for i in range(num_classes)])
+                test_preds_bin = metrics.label_binarize(test_preds, classes=[i for i in range(num_classes)])
+                metrics.get_roc_auc(test_trues_bin, test_preds_bin, num_classes, t)
 
         return cs_loss_record, cs_epoch_loss, test_trues_bin, test_preds_bin
 
@@ -453,7 +452,7 @@ class CustomerOneProduct(CustomerStreamer):
                         cp_epoch_loss[str(t)+" Sequences Training"].append(loss.item())
                         if (epoch+1) % 1 == 0:
                             print (f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{n_total_steps}], Loss: {loss.item():.4f}')
-#             torch.save(cp_one_model.state_dict(), current_path+'/customized/model/trained_model/customer_product/gru_'+str(b)+'_'+str(t)+'_one.pth')
+            torch.save(cp_one_model.state_dict(), current_path+'/customized/model/trained_model/customer_product/gru_'+str(b)+'_'+str(t)+'_one.pth')
 
             # Test the model
             n_total_steps = len(test_loader) # total sample/N 批次
