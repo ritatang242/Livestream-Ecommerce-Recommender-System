@@ -49,11 +49,11 @@ class VAE(nn.Module):
         return total_loss, MSE, KLD
     
     
-    def mytrain(self, input_full_context):
+    def mytrain(self, input_full_context, model_name, z_dims=[32, 64]):
 
         # Hyper-parameters
         vae_h_dim = 256
-        z_dims = [20, 30, 50]
+        z_dims = z_dims
         num_epochs = 30
         batch_list = [64]
         learning_rate = 1e-3
@@ -64,6 +64,10 @@ class VAE(nn.Module):
 
         train_data, test_data = train_test_split(input_full_context, test_size=0.33, random_state=2022) # split data
         input_dim = train_data.shape[1]
+        if type(input_full_context[0][0]) == np.float64:
+            print("[Train] change Double to Float")
+            train_data = torch.tensor(train_data, dtype=torch.float)
+            test_data = torch.tensor(test_data, dtype=torch.float)
 
         for batch_size, z_dim in itertools.product(batch_list, z_dims):
             print("z-dim:", z_dim, "Batch size: ", batch_size)
@@ -96,7 +100,7 @@ class VAE(nn.Module):
                                .format(epoch+1, num_epochs, i+1, len(vae_tr_loader), loss.item(), reconst_loss.item(), kl_div.item()))
                 loss_record["Training (z="+str(z_dim)+")"].append(loss.item())
 
-            torch.save(vae_model.state_dict(), current_path+'/customized/model/trained_model/vae/vae_z_'+str(z_dim)+'batch_'+str(batch_size)+'.pth')
+            torch.save(vae_model.state_dict(), current_path+'/customized/model/trained_model/vae/vae_z_'+str(z_dim)+'batch_'+str(batch_size)+'_'+str(model_name)+'.pth')
 
             with torch.no_grad():
                 for epoch in range(num_epochs):
@@ -114,7 +118,7 @@ class VAE(nn.Module):
         return loss_record
 
 
-    def mytest(self, input_full_context, z_dim=20, batch_size=64, weight=2):
+    def mytest(self, input_full_context, model_name, z_dim=32, batch_size=64, weight=2):
 
         print("save results at weight:", weight)
 
@@ -129,7 +133,11 @@ class VAE(nn.Module):
         vae_preds = []
         blurry_context = []
 
-        model_path = current_path+'/customized/model/trained_model/vae/vae_z_'+str(z_dim)+'batch_'+str(batch_size)+'.pth'
+        model_path = current_path+'/customized/model/trained_model/vae/vae_z_'+str(z_dim)+'batch_'+str(batch_size)+'_'+str(model_name)+'.pth'
+        if type(input_full_context[0][0]) == np.float64:
+            print("[Test] change Double to Float")
+            input_full_context = torch.tensor(input_full_context, dtype=torch.float)
+            
         data_loader = torch.utils.data.DataLoader(dataset=input_full_context, 
                                                 batch_size=batch_size, 
                                                 shuffle=False) # 測試集不需要打亂結果也是一樣(因為沒有訓練，是拿已訓練完畢的模型直接產出結果)

@@ -5,11 +5,12 @@ from customized import preprocess
 from customized import metrics
 from customized.model import NN
 from customized.model import bayesianNN
+from customized.model import bayesianNN_gamma
 
 
 def get_data(experiment, cust_id, reward_cust_id):
     if experiment in ['aenn', 'aebnn']:
-        latent_context = np.load('data/latent_vector.npy')
+        latent_context = np.load('data/latent_context.npy') # full_latent30
         context, context_id, _ = preprocess.trim_cust_for_context_sort(latent_context, cust_id, reward_cust_id)
     elif experiment in ['vaenn', 'vaebnn']:
         latent_context = np.load('data/blurry_context.npy')
@@ -18,14 +19,10 @@ def get_data(experiment, cust_id, reward_cust_id):
 
 
 def policy_generation(experiment, context, streamer_product, rewards_df, class_weight=0):
-    if experiment == 'aenn':
+    if experiment in ['aenn', 'vaenn']:
         regrets, scores_idx, highest_idxs = NN.run(context, streamer_product, rewards_df, class_weight)
-    elif experiment == 'vaenn':
-        regrets, scores_idx, highest_idxs = NN.run(context, streamer_product, rewards_df, class_weight)
-    elif experiment == 'aebnn':
-        regrets, scores_idx, highest_idxs = bayesianNN.run(context, streamer_product, rewards_df, class_weight)
-    elif experiment == 'vaebnn':
-        regrets, scores_idx, highest_idxs = bayesianNN.run(context, streamer_product, rewards_df, class_weight)
+    elif experiment in ['aebnn', 'vaebnn']:
+        regrets, scores_idx, highest_idxs = bayesianNN_gamma.run(context, streamer_product, rewards_df, class_weight)
     return regrets, scores_idx, highest_idxs
 
 
@@ -42,7 +39,8 @@ def main(experiments, mylabels, fig_name, cust_num, prod_num, class_weight=False
     reward_cust_id = list(repeat_reward_pivot.index)
     reward_prod_id = list(repeat_reward_pivot.columns)
     # streamer-product features
-    repeat_streamer_product = preprocess.concate_streamer_product_features(sub_txn, streamer, reward_prod_id)
+    scale_streamer = preprocess.standardize(streamer)
+    repeat_streamer_product = preprocess.concate_streamer_product_features(sub_txn, scale_streamer, reward_prod_id)
     # context
     contexts = {}
     for exp in experiments:

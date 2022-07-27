@@ -147,10 +147,10 @@ class CustomerStreamer():
         # data preprocess
         txn_n = preprocess.generate_last_n_txn(self.txn_data, sequence_length, self.end_date)   
         cust_id = list(txn_n.groupby(['asid']).last().index)  # keep input's cust_id in order
-        s_seq = preprocess.generate_streamer_seq(txn_n, self.scale_streamer, sequence_length)  # input sequences
-        print(s_seq.shape)
+        s_seq = preprocess.generate_streamer_seq(txn_n, self.scale_streamer, sequence_length)  # input sequences       
         labels_k = dict(zip(self.streamer.index.to_list(), [i for i in range(self.streamer.shape[0])])) # user_id as key
         s_labels = preprocess.generate_streamer_targets(txn_n, labels_k) # label sequences' targets
+        print(s_seq.shape, s_labels.shape)
         # data preprocess
         dataset = preprocess.StreamerDataset(s_seq, s_labels)
         data_loader = torch.utils.data.DataLoader(dataset=dataset, 

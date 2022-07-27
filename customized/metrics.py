@@ -10,6 +10,8 @@ from sklearn.metrics import roc_curve, auc, roc_auc_score, precision_score, reca
 from itertools import cycle
 from customized import preprocess
 
+### model measurements ###
+
 # def get_confusion_matrix(trues, preds, num_classes):
 #     labels = [i for i in range(num_classes)]
 #     conf_matrix = confusion_matrix(trues, preds, labels)
@@ -159,6 +161,10 @@ def df_for_plot(df, txn_n, prod_n, trim_cust_list, cust_has_ans_list):
     df = df.join(prod_n_wt_name.groupby('asid').agg({'name' : lambda x: '^^'.join([str(n) for n in x])})).reset_index().rename(columns={'name': 'products_in_basket', 'index': 'asid'})
     return df
 
+### model measurements ###
+
+### full context visualization ###
+
 def plot_2d_scatter(df, figname, hue, hue_order):
     fig = plt.figure(figsize=(8,8))
     sns.scatterplot(data=df, x='Dim1', y='Dim2', hue=hue, hue_order=hue_order)
@@ -197,28 +203,11 @@ def plot_3d_continuous(df, color):
     fig.update_traces(marker_size = 2) # 調整點的大小
     fig.update_layout(legend= {'itemsizing': 'constant'}) # 讓legend不隨著marker size變小
     fig.show()
-    
-def plot_regret(regret_dict, mylables, fig_name, bbox_to_anchor=(0.02, 0.02), loc=3, rounds=2602):
-    for k, v in regret_dict.items():
-        print(f"{k}'s regret: {np.round(regret_dict[k][-1], 4)}")
-        plt.plot(range(rounds), regret_dict[k], ls='-', label=k)
-        plt.ylabel('Regret')
-        plt.xlabel('Number of Rounds')
-        plt.legend(labels=mylables, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
-        plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
-    plt.savefig(fname='./fig/regret_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
-    plt.show()
-    
-def plot_coverage(coverage_dict, mylables, fig_name, bbox_to_anchor=(.98, 0.02), loc=4):
-    for k, v in coverage_dict.items():
-        print(f"{k}'s coverage: {np.round(coverage_dict[k][-1], 4)}")
-        plt.plot(range(100), coverage_dict[k], ls='-')
-        plt.ylabel('Coverage')
-        plt.xlabel('Number of Rounds')
-        plt.legend(labels=mylables, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
-    plt.savefig(fname='./fig/coverage_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
-    plt.show()
-    
+
+### full context visualization ###
+
+### recommendation measurements ###
+
 def cal_class_weights(reward_pivot):
     total = reward_pivot.shape[0]*reward_pivot.shape[1]
     neg = (reward_pivot==0).sum().sum()
@@ -232,29 +221,31 @@ def cal_class_weights(reward_pivot):
     
     return weight_for_1    
     
-def cal_hit_ratio(rewards_df, scores_idx, min_val=10, max_val=55, step=5):
-    cust_num = len(set(rewards_df.asid))
+def cal_hit_ratio(cust_num, rewards_df, scores_idx, min_val=10, max_val=110, step=10):
+#     cust_num = len(set(rewards_df.asid)) # repeat dataset需要*10而active/normal不用
     prod_num = len(set(rewards_df.商品id))
     ground_turth = sum(rewards_df.reward==1)
     hr = []
     k_list = [k for k in range(min_val, max_val, step)]
     for k in k_list:
-        idx_for_rewards_df_latent = preprocess.idx_list_at_topK(scores_idx, cust_num=cust_num, prod_num=prod_num, k=k)
+        tolerance = int(k/100 * prod_num)
+        idx_for_rewards_df_latent = preprocess.idx_list_at_topK(scores_idx, cust_num=cust_num, prod_num=prod_num, k=tolerance)
         hit = sum(rewards_df.iloc[list(np.ravel(idx_for_rewards_df_latent))].reward==1)
         hr.append(100 * hit/ground_turth)
     return hr, k_list, idx_for_rewards_df_latent
 
-def cal_hit_ratio_mab(rewards_df, predict_id, min_val=10, max_val=55, step=5):
-    prod_num = len(set(rewards_df.asid))
-    cust_num = len(set(rewards_df.商品id))
+def cal_hit_ratio_mab(cust_num, rewards_df, predict_id, min_val=10, max_val=110, step=10):
+#     cust_num = len(set(rewards_df.asid))
+    prod_num = len(set(rewards_df.商品id))
     ground_turth = sum(rewards_df.reward==1)
     k_list = [k for k in range(min_val, max_val, step)]
     hr = []
     for k in k_list:
         hit_cnt = 0
+        tolerance = int(k/100 * prod_num)
         for i in range(cust_num):
-            topk = predict_id[i][:k] # 每人有200筆
-            topk = [str(i) for i in topk]
+            topk = predict_id[i][:tolerance] # 每人有200筆
+            topk = [str(i) for i in topk] # user_id
             if i == 0:
                 per_rewards_df = rewards_df.iloc[:prod_num]    
                 hit_cnt += per_rewards_df[per_rewards_df.商品id.isin(topk)].reward.sum()    
@@ -266,25 +257,84 @@ def cal_hit_ratio_mab(rewards_df, predict_id, min_val=10, max_val=55, step=5):
         hr.append(100 * hit_cnt / ground_turth) # 各個k只要最後一次的hr
     return hr, k_list, topk
 
-def cal_hit_ratio_neuralucb(rewards_df, scores_idx, min_val=10, max_val=55, step=5):
-    cust_num = len(set(rewards_df.asid))
+def cal_hit_ratio_neuralucb(cust_num, rewards_df, scores_idx, min_val=10, max_val=110, step=10):
+#     cust_num = len(set(rewards_df.asid))
     prod_num = len(set(rewards_df.商品id))
     ground_turth = sum(rewards_df.reward==1)
     hr = []
-    k_list = [k for k in range(min_val, max_val, step)]
+    k_list = [k for k in range(min_val, max_val, step)] # percentage
     for k in k_list:
+        hit_cnt = 0
+        tolerance = int(k/100 * prod_num)
         for i in range(cust_num):
-            idx_for_rewards_df_latent = scores_idx[i][:k]
-        hit = sum(rewards_df.iloc[idx_for_rewards_df_latent].reward==1)
-        hr.append(100 * hit/ground_turth)
+            idx_for_rewards_df_latent = scores_idx[i][:tolerance]
+            if i == 0:
+                per_rewards_df = rewards_df.iloc[:prod_num]    
+                hit_cnt += sum(per_rewards_df.iloc[idx_for_rewards_df_latent].reward==1)
+            else:
+                start_idx = prod_num * i
+                end_idx = prod_num * (i+1)
+                per_rewards_df = rewards_df.iloc[start_idx:end_idx]    
+                hit_cnt += sum(per_rewards_df.iloc[idx_for_rewards_df_latent].reward==1)
+        hr.append(100 * hit_cnt / ground_turth) # 各個k只要最後一次的hr
     return hr, k_list, idx_for_rewards_df_latent
 
-def plot_hit_ratio(hr_dict, k_list, mylables, fig_name, bbox_to_anchor=(.02, 0.98), loc='upper left'):
+def plot_regret(regret_dict, mylabels, fig_name, bbox_to_anchor=(.02, .02), loc=3, rounds=2602):
+    for k, v in regret_dict.items():
+        print(f"{k}'s regret: {np.round(regret_dict[k][-1], 4)} %")
+        plt.plot(range(rounds), regret_dict[k], ls='-', label=k)
+        plt.ylabel('Regret')
+        plt.xlabel('Number of Rounds')
+        plt.legend(labels=mylabels, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
+#         plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
+    plt.savefig(fname='./fig/regret_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
+    plt.show()
+    
+def plot_coverage(coverage_dict, mylabels, fig_name, rounds=100, bbox_to_anchor=(.98, 0.02), loc=4):
+    for k, v in coverage_dict.items():
+        print(f"{k}'s coverage: {np.round(coverage_dict[k][-1], 4)} %")
+        plt.plot(range(rounds), coverage_dict[k], ls='-')
+        plt.ylabel('Coverage (%)')
+        plt.xlabel('Number of Rounds')
+        plt.legend(labels=mylabels, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
+    plt.savefig(fname='./fig/coverage_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
+    plt.show()
+    
+def plot_hit_ratio(hr_dict, k_list, mylabels, fig_name, bbox_to_anchor=(.98, .02), loc=4):
     for k, v in hr_dict.items():
-        print(f"{k}'s hit ratio: {np.round(hr_dict[k][-1], 2)} %")
+        print(f"{k}'s hit ratio: {np.round(hr_dict[k][1], 4)} %")
         plt.plot(k_list, hr_dict[k], ls='-', label=k)
         plt.ylabel('HR@K (%)')
-        plt.xlabel('K')
-        plt.legend(labels=mylables, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
-    plt.savefig(fname='./fig/hr_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
+        plt.xlabel('Top K % of products')
+        plt.legend(labels=mylabels, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
+    plt.axvline(x=20, color='k', ls=':',label='Top 20%')
+    plt.savefig(fname='./fig/hr_k_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
     plt.show()
+    
+def plot_hit_ratio_per_round(hr_dict, mylabels, fig_name, bbox_to_anchor=(1.02, 1), loc=2, rounds=2602):
+    for k, v in hr_dict.items():
+        plt.plot(range(rounds), hr_dict[k], ls='-', label=k)
+        plt.ylabel('HR@20 (%)')
+        plt.xlabel('Number of rounds')
+        plt.legend(labels=mylabels, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
+    plt.savefig(fname='./fig/hr_cust_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
+    plt.show()
+    
+def cal_diversity(prod_num, rec_results):
+    diversity = []
+    for t in range(len(rec_results)):
+        num_uniq_id = len(set(rec_results[:(t+1)]))
+        diversity.append(100*num_uniq_id/prod_num)
+    return diversity
+
+def plot_diversity(diver_dict, mylabels, fig_name, bbox_to_anchor=(.98, .02), loc=4, rounds=2602):
+    for k, v in diver_dict.items():
+        print(f"{k}'s diversity: {np.round(diver_dict[k][-1], 4)} %")
+        plt.plot(range(rounds), diver_dict[k], ls='-', label=k)
+        plt.ylabel('Diversity (%)')
+        plt.xlabel('Number of rounds')
+        plt.legend(labels=mylabels, bbox_to_anchor=bbox_to_anchor, loc=loc, borderaxespad=0.)
+    plt.savefig(fname='./fig/diversity_'+str(fig_name)+'.pdf', dpi=300, format='pdf', bbox_inches='tight')
+    plt.show()
+    
+### recommendation measurements ###

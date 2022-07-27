@@ -10,6 +10,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class NeuralNetwork(nn.Module):
     def __init__(self, in_dim=811, h1_dim=256, h2_dim=64, out_dim=1): # 20customer+768product+23streamer 每一輪丟(一個人 配 一個商品)
         super(NeuralNetwork, self).__init__()
+        torch.manual_seed(69112) # 69112
         self.in_dim = in_dim
         self.h1_dim = h1_dim
         self.h2_dim = h2_dim
@@ -31,6 +32,25 @@ class NeuralNetwork(nn.Module):
         logits = self.nn_model(x)
         return logits
     
+    def early_stop(self, loss, signal, optimizer):
+        """Control model's weight update
+        
+        Parameters
+        ----------
+        loss : tensor
+            The model cost(loss) value.
+        
+        signal : boolean
+            The signal that wheather the early stop happens or not.
+        """
+        if signal == False:   # update model
+            loss.backward(retain_graph=True)
+            optimizer.step()
+        elif signal == True:  # 若early_stop就不要再算了
+            pass
+        else:
+            print('Signal exception ouccur!')
+    
     
 def run(lers_context, streamer_product, rewards_df, pos_weight=0):
     '''
@@ -42,7 +62,7 @@ def run(lers_context, streamer_product, rewards_df, pos_weight=0):
     h1_dim=256
     h2_dim=128
     out_dim=1
-    in_dim=811
+    in_dim=lers_context.shape[1] + streamer_product.shape[1]
     scores_idx = {}
     rewards = {}
     highest_scores = []
@@ -51,6 +71,14 @@ def run(lers_context, streamer_product, rewards_df, pos_weight=0):
     n_correct = 0
     regret = 0
     regrets = []
+    # for early stop
+    the_last_loss = 100
+    last_loss_avg = [1.0]
+    patience = 4
+    trigger_times = 0
+    signal = False
+    early_stop_cnt = 0 # 整個模型停了幾次
+    # for early stop
 
     nn_model = NeuralNetwork(in_dim=in_dim, h1_dim=h1_dim, h2_dim=h2_dim, out_dim=out_dim).to(device)
     
@@ -67,7 +95,7 @@ def run(lers_context, streamer_product, rewards_df, pos_weight=0):
     for t in progressbar.progressbar(range(n_total_steps)): # (2602, )
         scores_idx[t] = []
         rewards[t] = []
-        repeat_context = np.repeat(lers_context[t], streamer_product.shape[0], axis=0).reshape(-1, 20) # (1023, 20)
+        repeat_context = np.repeat(lers_context[t], streamer_product.shape[0], axis=0).reshape(-1, lers_context.shape[1]) # (1023, 20)
         recommendation_contexts = np.concatenate((repeat_context, streamer_product), axis=1) # cust, stream-prod paired # (1023, 811)
         context_rewards = all_rewards_array[t] # (1023, )
         # to tensor & gpu
@@ -78,11 +106,24 @@ def run(lers_context, streamer_product, rewards_df, pos_weight=0):
         pred_scores = nn_model(recommendation_contexts) # (1023, 1)
 #         print("sigmoid:",torch.sigmoid(pred_scores))
 
-        # loss
-        loss = loss_funtion(pred_scores, context_rewards) # 每個商品都計算loss
         optimizer.zero_grad()
-        loss.backward() # 訓練 2602 次
-        optimizer.step()
+    
+        # loss with early stop
+        the_current_loss = loss_funtion(pred_scores, context_rewards) # 每個商品都計算loss
+        last_loss_avg.append(the_current_loss.item()) # 為了做平均要記錄所有的loss
+        if the_current_loss > np.mean(last_loss_avg[-3:]): # 取最後三次做移動平均
+            trigger_times += 1
+            signal = False
+            if trigger_times >= patience:
+#                 print('Early stopping!')
+                signal = True
+                early_stop_cnt += 1
+        else:
+            trigger_times = 0
+            signal = False        
+        nn_model.early_stop(the_current_loss, signal, optimizer)
+        the_last_loss = the_current_loss
+
 #         if (t+1) % 1 == 0:
 #             print (f'Step [{t+1}/{n_total_steps}], Loss: {loss.item():.4f}')
 
@@ -108,7 +149,9 @@ def run(lers_context, streamer_product, rewards_df, pos_weight=0):
     print(f'Recommend Ratio: {100*(recommend_cnt / (t+1)):.2f} %') 
     print(f'Accuracy: {acc:.2f} %') 
     print(f'Correct: {n_correct}')
-    print(f'Regret: {regrets[-1]}')
+    print(f'Regret: {np.round(regrets[-1], 4)}')
+    print(f'Early Stop times: {early_stop_cnt}')
+    print(f'Current seed: {torch.seed()}')
 
     return regrets, scores_idx, highest_idxs
 

@@ -41,9 +41,8 @@ class AutoEncoder(nn.Module):
         )
 
     def forward(self, inputs):
-        codes = self.encoder(inputs)
-        decoded = self.decoder(codes)
-
+        codes = self.encoder(inputs) # latent vector
+        decoded = self.decoder(codes) # reconstructed input
         return codes, decoded
 
 
@@ -54,8 +53,8 @@ class AutoEncoder(nn.Module):
     
 
 
-    def mytrain(self, input_full_context, model_name):
-        z_dims = [20, 30, 50]
+    def mytrain(self, input_full_context, model_name, z_dims=[32, 64]):
+        z_dims = z_dims
         num_epochs = 30
         batch_list = [128]
         learning_rate = 0.001

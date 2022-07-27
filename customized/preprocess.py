@@ -9,6 +9,8 @@ from sklearn.preprocessing import MultiLabelBinarizer
 import torch
 from torch.utils.data import Dataset
 import pickle
+from customized.model import autoencoder
+from customized import metrics
 
 '''
 一筆訂單只有一個商品
@@ -125,7 +127,8 @@ def generate_static_user_context(txn_data, end_date):
     address = pd.read_csv('data/user_address.csv', index_col=0, dtype={'asid': str, 'city': str, 'area': str})
     address = address[address.asid != 'blank']
     static_df = static_df.merge(address, how='left', on='asid')
-    static_df = pd.get_dummies(static_df, columns=['payment_method','shipping_method','city','area'])
+#     static_df = pd.get_dummies(static_df, columns=['payment_method','shipping_method','city','area'])
+    static_df = pd.get_dummies(static_df, columns=['payment_method','shipping_method','city']) # area太多了先拿掉
     return rfm, static_df
 
 def generate_streamer_features(streamer_static_fname, txn_data, prod_data, cmt_data, rfm_data, end_date):
@@ -408,17 +411,26 @@ def trim_cust_for_context_sort(full_context, cust_id, trim_cust_list):
     full_cxt_id = list(df2.index)
     return full_cxt, full_cxt_id, full_cxt_dict
 
-def concate_streamer_product_features(txn_data, streamer, reward_prod_id):
+def concate_streamer_product_features(txn_data, scale_streamer, reward_prod_id, first=False):
     prod_feature = id2embed(reward_prod_id)
-    print(f"product feature: {prod_feature.shape}")
+    # 為了讓pair的product feature維度不要太高(遠大於blurry context)先降維
+    print("[Autoencode streamer-product features]")
+    ae_model = autoencoder.AutoEncoder()
+    if first==True:
+        loss = ae_model.mytrain(prod_feature, "prod_feature", z_dims=[32, 64])
+        _, _, prod_latent = ae_model.mytest(prod_feature, "prod_feature", z_dim=32, batch_size=128)
+        metrics.plot_loss_wt_val(loss, 'prod_latent')
+    else:
+        _, _, prod_latent = ae_model.mytest(prod_feature, "prod_feature", z_dim=32, batch_size=128)
+    print(f"product feature: {prod_latent.shape}")
     prod_belongs_streamer = txn_data[txn_data.商品id.isin(reward_prod_id)].drop_duplicates(['user_id','商品id'])[['user_id','商品id']]
     prod_belongs_streamer = prod_belongs_streamer.set_index('商品id').reindex(reward_prod_id).dropna() # 200
     streamer_feature = []
     for u in list(prod_belongs_streamer.user_id):
-        streamer_feature.append(streamer[streamer.index==u].to_numpy().reshape(23))
+        streamer_feature.append(scale_streamer[scale_streamer.user_id==u].set_index('user_id').to_numpy().reshape(23))
     streamer_feature = np.array(streamer_feature)
     print(f"streamer feature: {streamer_feature.shape}")
-    streamer_product = np.concatenate((streamer_feature, prod_feature), axis=1)
+    streamer_product = np.concatenate((streamer_feature, prod_latent), axis=1)
     print(f"small streamer-product: {streamer_product.shape}")
     return streamer_product
 
@@ -429,24 +441,28 @@ def concate_streamer_product_features(txn_data, streamer, reward_prod_id):
 
 def recommendation_results_df(highest_idxs, reward_cust_id, reward_prod_id):
     rec_id = []
-    for t in range(100):
+    for t in range(len(highest_idxs)):
         rec_id.append(str(reward_prod_id[highest_idxs[t]]))
     rec_results = pd.DataFrame({'asid': reward_cust_id, 'rec_id': rec_id})
     return rec_results
 
-def coverage_list(repeat_reward, rec_results):
-    rec_record = repeat_reward.merge(rec_results, how='left', left_on=['asid','商品id'], right_on=['asid','rec_id']).fillna(0)
+def coverage_list(reward, rec_results):
+    rec_record = reward.merge(rec_results, how='left', left_on=['asid','商品id'], right_on=['asid','rec_id']).fillna(0)
     cnt = 0
+    cover_ratio = 0
     coverage = []
-    for i in range(rec_record.shape[0]): # 因為是left join可能超過100次
-        if (rec_record.reward[i] == 1) & (rec_record.rec_id[i]!=0): # 確實喜歡且有推薦到
-            if cnt < 50:
+    ground_truth = sum(reward.reward == 1)
+    for i in range(len(rec_record)): # 推薦幾輪
+        # ground truth總共有50個1
+        if (rec_record.reward[i] == 1) & (rec_record.rec_id[i]!=0): # 確實喜歡且有推薦到 # 沒推薦的話rec_id會是na並以0表示
+            if cover_ratio < 100: # non-repeated hits # 必須是小於, 這樣最後一輪才會加到剛好100%
                 cnt += 1
-            else:
-                cnt += 0
-            coverage.append( cnt / 50 )
-        elif rec_record.rec_id[i]!=0: # 控制在100輪內
-            coverage.append( cnt / 50 )
+                cover_ratio = 100* cnt / ground_truth
+                coverage.append(cover_ratio)
+            else: # repeated hits
+                coverage.append(100)
+        elif rec_record.rec_id[i]!=0: # 做100輪所以會有100筆記錄, 剩下的情況是不喜歡但有推薦到 # 控制在100輪內(repeat dataset共100rounds)
+            coverage.append(cover_ratio)
     return coverage
 
 def idx_list_at_topK(scores_idx, cust_num=1000, prod_num=200, k=10):
@@ -460,7 +476,6 @@ def idx_list_at_topK(scores_idx, cust_num=1000, prod_num=200, k=10):
             idx = [start_idx+element for element in scores_idx[i][:k]] # 第i個人的topK
             idx_for_rewards_df.append(idx)
     return idx_for_rewards_df
-
 
 
 #### for measurements ####

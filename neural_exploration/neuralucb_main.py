@@ -111,9 +111,10 @@ def myNeuralUCB(user_features, reward_df, p = 0.2, hidden_size = 32, epochs = 10
             regret_list.append(1)
             
     regret = np.cumsum(regret_list) / range(1, len(regret_list)+1)    
+    regret_percent = [100 * x for x in regret]
     reward_df_local['action'] = model.actions
     
-    return regret, reward_df_local, sort_scores
+    return regret_percent, reward_df_local, sort_scores
 
 def coverage(reward_df_local):
     hit_action_set = reward_df_local.reset_index().groupby('asid')['action'].apply(set)
@@ -127,7 +128,7 @@ def coverage(reward_df_local):
     total_likes = 0
     total_hates = 0
     for uid in hit_action_set.index:
-        user_rating = reward_df_local.loc[uid].iloc[0].drop('action')
+        user_rating = reward_df_local.drop(columns=['action']).reset_index().drop_duplicates(subset='asid').set_index('asid').loc[uid] # repeat會有重複10筆一樣的, normal & active只有一筆
         user_likes = set(user_rating[user_rating == 1].index)
         user_hates = set(user_rating[user_rating == 0].index)
 
@@ -177,8 +178,8 @@ def coverage(reward_df_local):
             user_miss_dict[uid].append(movie_id)
 
 
-        history_cover_ratio.append(total_hit_count/total_likes)
-        history_miss_ratio.append(total_miss_count/total_hates)
+        history_cover_ratio.append(100* total_hit_count/total_likes)
+        history_miss_ratio.append(100* total_miss_count/total_hates)
 
     cover_miss = {
         'cover':history_cover_ratio,

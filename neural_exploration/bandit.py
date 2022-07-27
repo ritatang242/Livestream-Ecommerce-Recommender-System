@@ -60,9 +60,9 @@ class ContextualBandit():
         self.rewards = np.array(
             [
                 self.h(self.features[t, k]) + self.noise_std*np.random.randn()
-                for t, k in itertools.product(range(self.T), range(self.n_features)) # n_arms
+                for t, k in itertools.product(range(self.T), range(self.n_features)) # original: n_arms, 我們的資料要改成 n_features
             ]
-        ).reshape(self.T, self.n_features) # 2602, 1023
+        ).reshape(self.T, self.n_features) # original: n_arms, 我們的資料要改成 n_features
 
         # to be used only to compute regret, NOT by the algorithm itself
         self.best_rewards_oracle = np.max(self.rewards, axis=1)
