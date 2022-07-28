@@ -8,53 +8,53 @@ In recent years, live stream e-commerce shopping has received extensive attentio
 
 ## Contents
 
-Acknowledgements  i 
-摘要  ii 
-Abstract  iii 
-Contents  v 
-List of Figures  viii 
-List of Tables  x
-1 Introduction  1
-2 RelatedWork  4
-2.1 Live Streaming E-commerce  4
-2.2 Recommender Systems  5
-2.3 Live Streaming Recommender System  6
-2.4 Contextual Multi-armed Bandit Methods  8
-2.5 Uncertainty Modeling  10
-3 The Proposed Framework  12
-3.1 Problem Definition  12
-3.2 Framework Overview  13
-3.3 Gated Recurrent Unit Networks in Temporal Context Model  16
-3.4 Variational Autoencoder for Blurry Context  18
-3.5 Bayesian Neural Networks for Exploring Product Recommendation  20
-3.6 Training Procedure  21
-4 Experiments  25
-4.1 Datasets  25
-4.2 Implementation Environment  25
-4.3 Customer Context Features  26
-4.3.1 Static Context Features  26 
-4.3.2 Customer-Product Context Features  26 
-4.3.3 Customer-Streamer Context Features  27
-4.4 Temporal Context Modeling  28 
-4.4.1 RNN-based Models for Temporal Context  28
-4.4.2 Identify the Appropriate Sequence Length of Temporal Context  29
-4.5 Full Context Analysis  33
-4.6 Dimension Reduction Analysis  35
-4.7 Production Recommendation Analysis  36
-4.7.1 Evaluation Metrics  36
-4.7.2 Experiment Dataset  38
-4.7.3 Recommendation Context for Product Recommendation  40
-4.7.4 Temporal Context for Product Recommendation  42
-4.7.5 End-to-End Live E-commerce Recommender System  44
-4.8 Algorithm Comparison Experiments  45 
-4.8.1 Experiments Settings  46 
-4.8.2 Normal Dataset  47 
-4.8.3 Active Dataset  50 
-4.8.4 Repeat Dataset  51
-5 Discussion  54 
-5.1 Offline Environment  54
-5.2 Feature Enrichment  54 
-5.3 Context Engineering  55 
-5.4 Neural Network  55
-6 Conclusion  57 
-References  59
+Acknowledgements  i </br>
+摘要  ii </br> 
+Abstract  iii </br>
+Contents  v </br>
+List of Figures  viii </br>
+List of Tables  x </br>
+1 Introduction  1 </br>
+2 RelatedWork  4 </br>
+2.1 Live Streaming E-commerce  4 </br>
+2.2 Recommender Systems  5 </br>
+2.3 Live Streaming Recommender System  6 </br>
+2.4 Contextual Multi-armed Bandit Methods  8 </br>
+2.5 Uncertainty Modeling  10 </br>
+3 The Proposed Framework  12 </br>
+3.1 Problem Definition  12 </br>
+3.2 Framework Overview  13 </br>
+3.3 Gated Recurrent Unit Networks in Temporal Context Model  16 </br>
+3.4 Variational Autoencoder for Blurry Context  18 </br>
+3.5 Bayesian Neural Networks for Exploring Product Recommendation  20 </br>
+3.6 Training Procedure  21 </br>
+4 Experiments  25 </br>
+4.1 Datasets  25 </br>
+4.2 Implementation Environment  25 </br>
+4.3 Customer Context Features  26 </br>
+4.3.1 Static Context Features  26  </br>
+4.3.2 Customer-Product Context Features  26  </br>
+4.3.3 Customer-Streamer Context Features  27 </br>
+4.4 Temporal Context Modeling  28 </br>
+4.4.1 RNN-based Models for Temporal Context  28 </br>
+4.4.2 Identify the Appropriate Sequence Length of Temporal Context  29 </br>
+4.5 Full Context Analysis  33 </br>
+4.6 Dimension Reduction Analysis  35 </br>
+4.7 Production Recommendation Analysis  36 </br>
+4.7.1 Evaluation Metrics  36 </br>
+4.7.2 Experiment Dataset  38 </br>
+4.7.3 Recommendation Context for Product Recommendation  40 </br>
+4.7.4 Temporal Context for Product Recommendation  42 </br>
+4.7.5 End-to-End Live E-commerce Recommender System  44 </br>
+4.8 Algorithm Comparison Experiments  45 </br>
+4.8.1 Experiments Settings  46 </br>
+4.8.2 Normal Dataset  47 </br>
+4.8.3 Active Dataset  50 </br>
+4.8.4 Repeat Dataset  51 </br>
+5 Discussion  54 </br>
+5.1 Offline Environment  54 </br>
+5.2 Feature Enrichment  54 </br>
+5.3 Context Engineering  55 </br>
+5.4 Neural Network  55 </br>
+6 Conclusion  57 </br>
+References  59 </br>
